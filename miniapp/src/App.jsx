@@ -52,14 +52,17 @@ function Pic({ p, cls }) {
   return <div className={cls + ' ph'}>{ICON[p.category] || '🍽'}</div>;
 }
 
-function Card({ p, onOpen, onAdd, qty }) {
+function Card({ p, onOpen, onAdd, onSub, qty }) {
   const multi = p.variants?.length > 1;
   return (
     <div className="card" onClick={() => onOpen(p)}>
       <div className="imgw">
         <Pic p={p} cls="img" />
         {p.oldPrice && <span className="sale">-{Math.round((1 - p.price / p.oldPrice) * 100)}%</span>}
-        <button className="plus gold" onClick={(e) => { e.stopPropagation(); onAdd(e, p); }}>{qty > 0 ? qty : '+'}</button>
+        <div className="ctl" onClick={(e) => e.stopPropagation()}>
+          {qty > 0 && <><button className="minus" onClick={() => onSub(p)}>−</button><span className="qn">{qty}</span></>}
+          <button className="plus gold" onClick={(e) => onAdd(e, p)}>+</button>
+        </div>
       </div>
       <div className="cb">
         <div className="price">
@@ -169,6 +172,10 @@ export default function App() {
     fly(e.currentTarget, p.image);
     add(p.id, 0);
     if (!UPCATS.includes(p.category)) setUp(true);
+  };
+  const subOne = (p) => {
+    const k = Object.keys(cart).find((x) => x.split('|')[0] === String(p.id));
+    if (k) { const [id, idx] = k.split('|').map(Number); add(id, idx, -1); }
   };
   const addFromUpsell = (e, p) => { fly(e.currentTarget, p.image); add(p.id, 0); };
   const addFromSheet = (e) => {
@@ -287,7 +294,7 @@ export default function App() {
           return (
             <section className="sec" id={'cat-' + i} key={c}>
               <h2><span>{ICON[c] || '🍽'}</span> {c}</h2>
-              <div className="grid">{items.map((p) => <Card key={p.id} p={p} onOpen={openSheet} onAdd={addFromCard} qty={qtyOf(p.id)} />)}</div>
+              <div className="grid">{items.map((p) => <Card key={p.id} p={p} onOpen={openSheet} onAdd={addFromCard} onSub={subOne} qty={qtyOf(p.id)} />)}</div>
             </section>
           );
         })}
@@ -367,7 +374,10 @@ export default function App() {
                 <Pic p={p} cls="uimg" />
                 <div className="un">{p.name}</div>
                 <div className="up"><b>{fmt(vPrice(p, 0))}</b>{p.variants?.length > 1 && <small> {p.variants[0].l}</small>}</div>
-                <button className="plus gold sm" onClick={(e) => addFromUpsell(e, p)}>{qtyOf(p.id) > 0 ? qtyOf(p.id) : '+'}</button>
+                <div className="ctl sm">
+                  {qtyOf(p.id) > 0 && <><button className="minus" onClick={() => subOne(p)}>−</button><span className="qn">{qtyOf(p.id)}</span></>}
+                  <button className="plus gold sm" onClick={(e) => addFromUpsell(e, p)}>+</button>
+                </div>
               </div>))}
           </div>
           <button className="btn gold" onClick={() => go('cart')}>Savatchaga o'tish · {fmt(total)}</button>

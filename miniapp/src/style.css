@@ -228,3 +228,12 @@ body{background:#fff;color:#1b1b1b;background-image:radial-gradient(120% 34% at 
 .geo span{flex:1;font-weight:700}
 .geo a{color:#9A7410;font-weight:700;text-decoration:none}
 .geo button{background:none;border:none;color:#888;font-size:18px;padding:0 4px}
+
+.ctl{position:absolute;right:8px;bottom:8px;z-index:2;display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.95);border-radius:22px;padding:3px;box-shadow:0 3px 12px rgba(154,116,16,.25)}
+.ctl .plus{position:static;box-shadow:none}
+.ctl .minus{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--gold);background:#fff;color:var(--gd);font-size:22px;font-weight:800;line-height:1;padding:0}
+.ctl .qn{min-width:24px;text-align:center;font-weight:800;color:#222;font-size:15px}
+.ctl.sm{position:static;margin-top:6px;padding:2px;box-shadow:0 1px 6px rgba(154,116,16,.2)}
+.ctl.sm .minus{width:30px;height:30px;font-size:19px}
+.ctl.sm .qn{min-width:20px;font-size:14px}
+.ctl.sm .plus.sm{margin-top:0}
