@@ -105,7 +105,8 @@ export default function App() {
   const [cola, setCola] = useState(false);
   const [name, setName] = useState(() => ls('ff_name', ''));
   const [phone, setPhone] = useState(() => ls('ff_phone', ''));
-  const [loc, setLoc] = useState(() => ls('ff_loc', ''));
+  const [loc, setLoc] = useState(() => { const v = ls('ff_loc', ''); return String(v).startsWith('http') ? '' : v; });
+  const [geo, setGeo] = useState(() => ls('ff_geo', '') || (String(ls('ff_loc', '')).startsWith('http') ? ls('ff_loc', '') : ''));
   const [busy, setBusy] = useState(false);
   const [cart, setCart] = useState(() => ls('cart', {}));
   const [seen, setSeen] = useState(() => ls('ff_seen', []));
@@ -124,6 +125,7 @@ export default function App() {
   useEffect(() => save('ff_name', name), [name]);
   useEffect(() => save('ff_phone', phone), [phone]);
   useEffect(() => save('ff_loc', loc), [loc]);
+  useEffect(() => save('ff_geo', geo), [geo]);
   useEffect(() => save('ff_seen', seen), [seen]);
   useEffect(() => save('ff_sseen', sseen), [sseen]);
   useEffect(() => {
@@ -185,18 +187,26 @@ export default function App() {
   };
   const go = (p) => { setPage(p); setUp(false); window.scrollTo(0, 0); if (p === 'profile') loadMe(); };
 
-  const geo = () => navigator.geolocation?.getCurrentPosition(
-    (pos) => setLoc(`https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`),
-    () => alert("Joylashuvga ruxsat berilmadi. Manzilni qo'lda yozing."));
+  const getGeo = () => {
+    const ok = (la, lo) => { setGeo(`https://maps.google.com/?q=${la},${lo}`); buzz(); };
+    const deny = () => alert("Joylashuvni aniqlab bo'lmadi. Telefon sozlamalarida Telegram uchun joylashuvga ruxsat bering yoki manzilni qo'lda yozing.");
+    const fallback = () => {
+      if (!navigator.geolocation) return deny();
+      return navigator.geolocation.getCurrentPosition((pos) => ok(pos.coords.latitude, pos.coords.longitude), deny, { enableHighAccuracy: true, timeout: 15000 });
+    };
+    const lm = tg?.LocationManager;
+    if (lm?.init) lm.init(() => (lm.isLocationAvailable ? lm.getLocation((d) => (d ? ok(d.latitude, d.longitude) : fallback())) : fallback()));
+    else fallback();
+  };
 
   const confirmOrder = async () => {
     const words = name.trim().split(/\s+/).filter((w) => w.length > 1);
     if (words.length < 2) { alert('Ism va familiyangizni yozing (masalan: Alisher Karimov)'); return; }
     if (phone.replace(/\D/g, '').length < 9) { alert("Telefon raqamingizni to'liq yozing (masalan: +998 90 123 45 67)"); return; }
-    if (loc.trim().length < 3) { alert('Manzilni yozing yoki joylashuvingizni yuboring'); return; }
+    if (loc.trim().length < 3 && !geo) { alert('Manzilni yozing yoki xaritada joylashuvingizni belgilang'); return; }
     setBusy(true);
     try {
-      await api('/orders', { method: 'POST', body: { items: lines.map((l) => ({ id: l.p.id, idx: l.idx, qty: l.qty })), cola, name: name.trim(), phone, location: loc } });
+      await api('/orders', { method: 'POST', body: { items: lines.map((l) => ({ id: l.p.id, idx: l.idx, qty: l.qty })), cola, name: name.trim(), phone, location: [loc.trim(), geo].filter(Boolean).join('\n') } });
       tg?.HapticFeedback?.notificationOccurred('success');
       setCart({}); setCola(false);
       setTimeout(() => (tg ? tg.close() : go('orders')), 300);
@@ -297,8 +307,13 @@ export default function App() {
             <div className="line sw-line"><span>Bunga qo'shimcha ravishda <b>Kola</b>ni atigi {fmt(COLA)}ga qo'shasizmi?</span><button className={'sw' + (cola ? ' on' : '')} onClick={() => setCola(!cola)} /></div>
             <input className="input" autoComplete="name" placeholder="👤 Ism va familiya" value={name} onChange={(e) => setName(e.target.value)} />
             <input className="input" type="tel" autoComplete="tel" placeholder="📞 Telefon: +998 90 123 45 67" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <input className="input" placeholder="📍 Manzil" value={loc} onChange={(e) => setLoc(e.target.value)} />
-            <button className="ghost wide" onClick={geo}>📍 Joylashuvimni yuborish</button>
+            <input className="input" placeholder="🏠 Manzil: ko'cha, uy, mo'ljal" value={loc} onChange={(e) => setLoc(e.target.value)} />
+            {geo ? (
+              <div className="geo ok"><span>✅ Joylashuv belgilandi</span><a href={geo} target="_blank" rel="noreferrer">Xarita</a><button onClick={() => setGeo('')}>✕</button></div>
+            ) : (
+              <button className="ghost wide" onClick={getGeo}>📍 Joylashuvimni belgilash</button>
+            )}
+            {geo && <button className="ghost wide" onClick={getGeo}>🔄 Joylashuvni yangilash</button>}
             <div className="sum"><span>Jami:</span><b>{fmt(total)}</b></div>
             <button className="btn gold" disabled={busy} onClick={confirmOrder}>{busy ? 'Yuborilmoqda…' : 'Buyurtmani tasdiqlash'}</button>
           </>}

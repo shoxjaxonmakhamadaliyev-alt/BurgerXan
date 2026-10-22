@@ -75,7 +75,7 @@ export default function App() {
             <tr key={o.id}>
               <td>{o.id}</td><td>{o.customerName || '—'}</td><td>{o.phone || o.user.phone || '—'}</td>
               <td>{o.items.map((i, k) => <div key={k}>{i.name}{i.label && ` (${i.label})`} × {i.qty}</div>)}</td>
-              <td style={{ maxWidth: 180, wordBreak: 'break-all' }}>{o.location?.startsWith('http') ? <a href={o.location} target="_blank" rel="noreferrer">📍 Xarita</a> : o.location}</td>
+              <td style={{ maxWidth: 200, wordBreak: 'break-word' }}>{(o.location || '').split('\n').map((x, k) => (x.startsWith('http') ? <div key={k}><a href={x} target="_blank" rel="noreferrer">📍 Xaritada ochish</a></div> : <div key={k}>{x}</div>))}</td>
               <td><b>{fmt(o.total)}</b></td><td>{new Date(o.createdAt).toLocaleString('ru-RU')}</td>
               <td><span className={'tag ' + o.status}>{ST[o.status]}</span><div style={{ marginTop: 6 }}>
                 {o.status !== 'delivered' && <button className="btn" onClick={() => setSt(o.id, 'delivered')}>Yetkazildi</button>}

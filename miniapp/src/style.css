@@ -223,3 +223,8 @@ body{background:#fff;color:#1b1b1b;background-image:radial-gradient(120% 34% at 
 .pic{object-fit:contain}
 .thumb,.uimg{object-fit:contain}
 .ph{background:#fff}
+
+.geo{display:flex;align-items:center;gap:10px;background:#f1fbf3;border:1px solid #bfe6c8;color:#1e7a3a;border-radius:14px;padding:11px 12px;margin:2px 0 10px;font-size:14px}
+.geo span{flex:1;font-weight:700}
+.geo a{color:#9A7410;font-weight:700;text-decoration:none}
+.geo button{background:none;border:none;color:#888;font-size:18px;padding:0 4px}
