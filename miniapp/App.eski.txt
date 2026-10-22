@@ -1,0 +1,177 @@
+import { useEffect, useMemo, useState } from 'react';
+
+const tg = window.Telegram?.WebApp;
+const api = (u, o = {}) =>
+  fetch('/api' + u, { ...o, headers: { 'content-type': 'application/json', 'x-init-data': tg?.initData || '', 'ngrok-skip-browser-warning': '1' }, body: o.body && JSON.stringify(o.body) })
+    .then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Xato'); return j; });
+const fmt = (n) => n.toLocaleString('ru-RU') + " so'm";
+const buzz = () => tg?.HapticFeedback?.impactOccurred('light');
+const ICON = { 'Шаурма': '🌯', 'Бургеры': '🍔', 'Хот-Дог': '🌭', 'Нонбургер': '🥙', 'Пицца': '🍕', 'Сэндвич': '🥪', 'Крылышки': '🍗', Strips: '🍤', 'Картошка': '🍟', 'Соусы': '🥫', 'Напитки': '🥤' };
+const SLIDES = [
+  ['🍕', 'Sizni ochlik qiynayaptimi?', 'Biz issiqqina taomlarni tezkor yetkazamiz.'],
+  ['🛒', 'Bu qanday ishlaydi?', 'Tanlang, buyurtma bering va rohatlaning.'],
+  ['🔥', '10,000+ odam allaqachon biz bilan', 'Siz ham qo\'shiling!'],
+];
+const COLA = 5000;
+const vPrice = (p, i) => (p.variants?.length ? p.variants[i]?.p ?? p.variants[0].p : p.price);
+
+export default function App() {
+  const [onb, setOnb] = useState(localStorage.onb ? -1 : 0);
+  const [page, setPage] = useState('home');
+  const [products, setProducts] = useState([]);
+  const [me, setMe] = useState(null);
+  const [cat, setCat] = useState('all');
+  const [sheet, setSheet] = useState(null);
+  const [sIdx, setSIdx] = useState(0);
+  const [cola, setCola] = useState(false);
+  const [phone, setPhone] = useState(localStorage.phone || '');
+  const [loc, setLoc] = useState(localStorage.loc || '');
+  const [busy, setBusy] = useState(false);
+  const [cart, setCart] = useState(() => { try { return JSON.parse(localStorage.cart) || {}; } catch { return {}; } });
+
+  const loadMe = () => api('/me').then(setMe).catch(() => {});
+  useEffect(() => {
+    tg?.ready(); tg?.expand(); tg?.setHeaderColor?.('#000000'); tg?.setBackgroundColor?.('#000000');
+    api('/menu').then(setProducts).catch((e) => alert(e.message));
+    loadMe();
+  }, []);
+  useEffect(() => { localStorage.cart = JSON.stringify(cart); }, [cart]);
+  useEffect(() => { localStorage.phone = phone; localStorage.loc = loc; }, [phone, loc]);
+
+  const cats = useMemo(() => [...new Set(products.map((p) => p.category))], [products]);
+  const byId = useMemo(() => Object.fromEntries(products.map((p) => [p.id, p])), [products]);
+  const lines = Object.entries(cart).map(([k, qty]) => {
+    const [id, idx] = k.split('|').map(Number); const p = byId[id];
+    return p ? { k, p, idx, qty, label: p.variants?.[idx]?.l, price: vPrice(p, idx) } : null;
+  }).filter(Boolean);
+  const total = lines.reduce((s, l) => s + l.price * l.qty, 0) + (cola && lines.length ? COLA : 0);
+  const count = lines.reduce((s, l) => s + l.qty, 0);
+
+  const add = (id, idx, d = 1) => { buzz(); setCart((c) => { const k = id + '|' + idx; const n = (c[k] || 0) + d; const x = { ...c }; if (n <= 0) delete x[k]; else x[k] = n; return x; }); };
+  const quick = (e, p) => { e.stopPropagation(); add(p.id, 0); };
+  const open = (p) => { setSheet(p); setSIdx(0); };
+  const goCat = (c) => { setCat(c); setPage('catalog'); };
+
+  const geo = () => navigator.geolocation?.getCurrentPosition(
+    (pos) => setLoc(`https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`),
+    () => alert('Joylashuvga ruxsat berilmadi. Manzilni qo\'lda yozing.'));
+
+  const confirm = async () => {
+    setBusy(true);
+    try {
+      await api('/orders', { method: 'POST', body: { items: lines.map((l) => ({ id: l.p.id, idx: l.idx, qty: l.qty })), cola, phone, location: loc } });
+      tg?.HapticFeedback?.notificationOccurred('success');
+      setCart({}); setCola(false);
+      setTimeout(() => (tg ? tg.close() : setPage('home')), 300);
+    } catch (e) { alert(e.message); }
+    setBusy(false);
+  };
+
+  const reorder = (o) => {
+    const c = {};
+    o.items.forEach((i) => { if (i.id && byId[i.id]) c[i.id + '|' + i.idx] = i.qty; });
+    setCart(c); setPage('cart');
+  };
+
+  if (onb >= 0) {
+    const [ic, t, d] = SLIDES[onb];
+    return (
+      <div className="onb">
+        <button className="ghost" style={{ alignSelf: 'flex-end' }} onClick={() => { localStorage.onb = 1; setOnb(-1); }}>O'tkazish</button>
+        <div><div className="big">{ic}</div><h2>{t}</h2><div className="muted">{d}</div></div>
+        <div>
+          <div className="dots">{SLIDES.map((_, i) => <i key={i} className={i === onb ? 'on' : ''} />)}</div>
+          <button className="btn gold" onClick={() => (onb < 2 ? setOnb(onb + 1) : (localStorage.onb = 1, setOnb(-1)))}>{onb < 2 ? 'Keyingisi' : 'Boshla'}</button>
+        </div>
+      </div>
+    );
+  }
+
+  const Card = ({ p }) => (
+    <div className="card" onClick={() => open(p)}>
+      <div className="img" style={p.image ? { backgroundImage: `url(${p.image})` } : {}}>{!p.image && (ICON[p.category] || '🍽')}</div>
+      <div className="body">
+        <div className="nm">{p.name}</div>
+        <div>{p.oldPrice && <span className="old">{fmt(p.oldPrice)}</span>}<span className={p.oldPrice ? 'new' : 'reg'}>{p.variants?.length ? 'от ' : ''}{fmt(p.price)}</span></div>
+      </div>
+      <button className="plus gold" onClick={(e) => quick(e, p)}>+</button>
+    </div>
+  );
+
+  return (
+    <>
+      {page === 'home' && (
+        <div className="page">
+          <div className="row"><div><div className="muted">Xush kelibsiz 👋</div><h1 className="title">{me?.user?.name || 'Mehmon'}</h1></div></div>
+          <div className="stories">{cats.map((c) => <button key={c} className="story" onClick={() => goCat(c)}><i>{ICON[c] || '🍽'}</i>{c}</button>)}</div>
+          <div className="hero">
+            <h2>Ochmisiz? 🔥</h2><div className="soft">Issiq va mazali taomlar — tez yetkazib beramiz.</div>
+            <button className="btn gold" onClick={() => goCat('all')}>Yangi buyurtma berish</button>
+          </div>
+        </div>
+      )}
+
+      {page === 'catalog' && (
+        <div className="page">
+          <h1 className="title">Katalog</h1>
+          <div className="chips">{['all', ...cats].map((c) => <button key={c} className={'chip' + (cat === c ? ' on' : '')} onClick={() => setCat(c)}>{c === 'all' ? 'Hammasi' : (ICON[c] || '') + ' ' + c}</button>)}</div>
+          <div className="grid">{products.filter((p) => cat === 'all' || p.category === cat).map((p) => <Card key={p.id} p={p} />)}</div>
+        </div>
+      )}
+
+      {page === 'cart' && (
+        <div className="page">
+          <h1 className="title" style={{ marginBottom: 12 }}>Savatcha</h1>
+          {!lines.length ? <div className="muted" style={{ textAlign: 'center', padding: 50 }}>Savatcha bo'sh 🛒</div> : <>
+            {lines.map((l) => (
+              <div className="line row" key={l.k}>
+                <div><b>{l.p.name}{l.label && ` (${l.label})`}</b><div className="soft">{fmt(l.price * l.qty)}</div></div>
+                <div className="qty"><button onClick={() => add(l.p.id, l.idx, -1)}>−</button><b>{l.qty}</b><button onClick={() => add(l.p.id, l.idx, 1)}>+</button></div>
+              </div>))}
+            <div className="line row"><span>Bunga qo'shimcha ravishda <b>Kola</b>ni atigi {fmt(COLA)}ga qo'shasizmi?</span><button className={'sw' + (cola ? ' on' : '')} onClick={() => setCola(!cola)} /></div>
+            <input className="input" type="tel" placeholder="📞 Telefon: +998 90 123 45 67" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <input className="input" placeholder="📍 Manzil" value={loc} onChange={(e) => setLoc(e.target.value)} />
+            <button className="ghost" style={{ marginBottom: 14 }} onClick={geo}>📍 Joylashuvimni yuborish</button>
+            <div className="row" style={{ margin: '6px 0 12px', fontSize: 18 }}><span>Jami:</span><b style={{ color: 'var(--gold2)' }}>{fmt(total)}</b></div>
+            <button className="btn gold" disabled={busy} onClick={confirm}>{busy ? 'Yuborilmoqda…' : 'Buyurtmani tasdiqlash'}</button>
+          </>}
+        </div>
+      )}
+
+      {page === 'profile' && (
+        <div className="page">
+          <h1 className="title">👤 {me?.user?.name}</h1>
+          <h2 style={{ margin: '18px 0 10px', fontSize: 17, color: 'var(--gold)' }}>📜 Mening buyurtmalarim</h2>
+          {!me?.orders?.length && <div className="muted">Hali buyurtma yo'q</div>}
+          {me?.orders?.map((o) => (
+            <div className="line" key={o.id}>
+              <div className="row"><b>№{o.id}</b><span className="tag">{o.status === 'delivered' ? '✅ Yetkazildi' : o.status === 'cancelled' ? '❌ Bekor' : '⏳ Kutilmoqda'}</span></div>
+              <div className="muted" style={{ margin: '6px 0' }}>{o.items.map((i) => `${i.name}${i.label ? ' (' + i.label + ')' : ''} ×${i.qty}`).join(', ')}</div>
+              <div className="row"><b className="soft">{fmt(o.total)}</b><button className="ghost" onClick={() => reorder(o)}>Yana shundan buyurtma qilish</button></div>
+            </div>))}
+        </div>
+      )}
+
+      {sheet && <>
+        <div className="shade" onClick={() => setSheet(null)} />
+        <div className="sheet">
+          <div className="pic" style={sheet.image ? { backgroundImage: `url(${sheet.image})` } : {}}>{!sheet.image && (ICON[sheet.category] || '🍽')}</div>
+          <div className="in">
+            <h2 className="title">{sheet.name}</h2>
+            {sheet.description && <div className="muted" style={{ marginTop: 6 }}>{sheet.description}</div>}
+            {sheet.variants?.length > 0 && <div className="sizes">{sheet.variants.map((v, i) => <button key={i} className={'sz' + (i === sIdx ? ' on' : '')} onClick={() => setSIdx(i)}>{v.l} · {fmt(v.p)}</button>)}</div>}
+            {sheet.ingredients?.length > 0 && <><b className="soft">Tarkibi:</b><ul>{sheet.ingredients.map((x) => <li key={x}>{x}</li>)}</ul></>}
+          </div>
+          <div className="sticky"><button className="btn gold" onClick={() => { add(sheet.id, sIdx); setSheet(null); }}>Savatchaga qo'shish — {fmt(vPrice(sheet, sIdx))}</button></div>
+        </div>
+      </>}
+
+      <div className="nav">
+        {[['home', '🏠', 'Bosh sahifa'], ['catalog', '🔍', 'Katalog'], ['cart', '🛒', 'Savatcha'], ['profile', '👤', 'Profil']].map(([k, ic, t]) => (
+          <button key={k} className={page === k ? 'on' : ''} onClick={() => { setPage(k); if (k === 'profile') loadMe(); }}>
+            <b>{ic}</b>{t}{k === 'cart' && count > 0 && <span className="badge">{count}</span>}
+          </button>))}
+      </div>
+    </>
+  );
+}

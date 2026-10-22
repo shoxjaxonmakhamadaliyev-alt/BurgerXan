@@ -1,0 +1,18 @@
+import { Router } from 'express';
+import { adminAuth } from '../middlewares/auth.middleware.js';
+import * as a from '../controllers/adminController.js';
+const w = (fn) => (req, res) => fn(req, res).catch((e) => { console.error(e); res.status(500).json({ error: 'Server xatosi' }); });
+const r = Router();
+r.use(adminAuth);
+r.post('/login', a.login);
+r.get('/orders', w(a.orders));
+r.patch('/orders/:id', w(a.setStatus));
+r.get('/products', w(a.products));
+r.post('/products', w(a.createProduct));
+r.put('/products/:id', w(a.updateProduct));
+r.delete('/products/:id', w(a.deleteProduct));
+r.post('/upload', w(a.upload));
+r.get('/stories', w(a.listStories));
+r.post('/stories', w(a.createStory));
+r.delete('/stories/:id', w(a.deleteStory));
+export default r;

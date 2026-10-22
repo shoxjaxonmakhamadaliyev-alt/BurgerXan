@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import { tgAuth } from '../middlewares/auth.middleware.js';
+import * as c from '../controllers/cartController.js';
+const w = (fn) => (req, res) => fn(req, res).catch((e) => { console.error(e); res.status(500).json({ error: 'Server xatosi' }); });
+const r = Router();
+r.use(tgAuth);
+r.get('/menu', w(c.menu));
+r.get('/me', w(c.me));
+r.get('/stories', w(c.stories));
+r.post('/orders', w(c.createOrder));
+export default r;

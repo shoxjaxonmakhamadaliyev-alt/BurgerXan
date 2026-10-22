@@ -1,0 +1,28 @@
+{
+  "name": "fastfood-miniapp",
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "db:push": "prisma db push",
+    "seed": "node prisma/seed.js",
+    "build:app": "cd miniapp && npm install && npm run build",
+    "build:admin": "cd admin && npm install && npm run build",
+    "admin": "cd admin && npm install && npm run dev",
+    "photos": "node prisma/photos.js",
+    "replace": "node prisma/replace.js",
+    "build": "npm install && prisma generate && cd miniapp && npm install && npm run build && cd ../admin && npm install && npm run build"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "telegraf": "^4.16.3",
+    "prisma": "^5.22.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
