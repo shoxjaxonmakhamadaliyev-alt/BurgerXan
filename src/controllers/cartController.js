@@ -13,7 +13,9 @@ export const me = async (req, res) => res.json({ user: req.user, orders: await O
 
 export const createOrder = async (req, res) => {
   const { items = [], cola = false, phone = '', location = '' } = req.body;
-  if (!items.length || phone.length < 7 || location.length < 3) return res.status(400).json({ error: 'Telefon va manzilni kiriting' });
+  const name = String(req.body.name || '').trim().slice(0, 80);
+  if (!items.length || name.split(/\s+/).filter((w) => w.length > 1).length < 2) return res.status(400).json({ error: 'Ism va familiyani kiriting' });
+  if (String(phone).replace(/\D/g, '').length < 9 || location.length < 3) return res.status(400).json({ error: 'Telefon va manzilni kiriting' });
   const products = await Product.byIds(items.map((i) => +i.id));
   const byId = Object.fromEntries(products.map((p) => [p.id, p]));
   const lines = [];
@@ -26,9 +28,9 @@ export const createOrder = async (req, res) => {
     lines.push({ id: p.id, idx: +i.idx || 0, name: p.name, label: v.l, price: v.p, qty });
     total += v.p * qty;
   }
-  if (cola) { lines.push({ id: 0, idx: 0, name: 'Кола', label: null, price: config.colaPrice, qty: 1 }); total += config.colaPrice; }
+  if (cola) { lines.push({ id: 0, idx: 0, name: 'Kola', label: null, price: config.colaPrice, qty: 1 }); total += config.colaPrice; }
   await User.setPhone(req.user.id, phone);
-  const order = await Order.create({ userId: req.user.id, items: lines, total, location });
+  const order = await Order.create({ userId: req.user.id, items: lines, total, location, customerName: name, phone: String(phone).trim() });
   notify(req.user.telegramId, `Buyurtmangiz muvaffaqiyatli qabul qilindi! Kuryerimiz tez orada bog'lanadi 🍕\n\n№${order.id} · ${fmt(total)}`);
   res.json({ id: order.id, total });
 };

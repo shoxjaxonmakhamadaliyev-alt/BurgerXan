@@ -73,7 +73,7 @@ export default function App() {
         <table><thead><tr><th>№</th><th>Mijoz</th><th>Telefon</th><th>Buyurtma</th><th>Manzil</th><th>Summa</th><th>Sana</th><th>Holat</th></tr></thead>
           <tbody>{orders.map((o) => (
             <tr key={o.id}>
-              <td>{o.id}</td><td>{o.user.name}</td><td>{o.user.phone}</td>
+              <td>{o.id}</td><td>{o.customerName || '—'}</td><td>{o.phone || o.user.phone || '—'}</td>
               <td>{o.items.map((i, k) => <div key={k}>{i.name}{i.label && ` (${i.label})`} × {i.qty}</div>)}</td>
               <td style={{ maxWidth: 180, wordBreak: 'break-all' }}>{o.location?.startsWith('http') ? <a href={o.location} target="_blank" rel="noreferrer">📍 Xarita</a> : o.location}</td>
               <td><b>{fmt(o.total)}</b></td><td>{new Date(o.createdAt).toLocaleString('ru-RU')}</td>
@@ -110,7 +110,7 @@ export default function App() {
         <button className="btn pri" style={{ marginBottom: 14 }} onClick={() => setF({ ...EMPTY })}>➕ Yangi mahsulot</button>
         {f && <div className="form">
           <input className="input" placeholder="Nomi" value={f.name} onChange={set('name')} />
-          <input className="input" placeholder="Kategoriya (masalan: Пицца)" value={f.category} onChange={set('category')} />
+          <input className="input" placeholder="Kategoriya (masalan: Pitsa)" value={f.category} onChange={set('category')} />
           <input className="input" placeholder="Narx" value={f.price} onChange={set('price')} />
           <input className="input" placeholder="Eski narx (ixtiyoriy)" value={f.oldPrice} onChange={set('oldPrice')} />
           <input className="input full" placeholder="Rasm URL (ixtiyoriy)" value={f.image} onChange={set('image')} />

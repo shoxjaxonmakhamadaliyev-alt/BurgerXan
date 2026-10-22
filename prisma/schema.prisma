@@ -33,6 +33,8 @@ model Order {
   items     Json
   total     Int
   location  String?
+  customerName String?
+  phone     String?
   status    String   @default("pending")
   createdAt DateTime @default(now())
 }

@@ -8,8 +8,8 @@ const fmt = (n) => n.toLocaleString('ru-RU') + " so'm";
 const buzz = () => tg?.HapticFeedback?.impactOccurred('light');
 const ls = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } };
-const ICON = { 'Шаурма': '🌯', 'Бургеры': '🍔', 'Хот-Дог': '🌭', 'Нонбургер': '🥙', 'Пицца': '🍕', 'Сэндвич': '🥪', 'Крылышки': '🍗', Strips: '🍤', 'Картошка': '🍟', 'Соусы': '🥫', 'Напитки': '🥤' };
-const UP = [['Соусы', '🥫 Souslar'], ['Картошка', '🍟 Kartoshka'], ['Напитки', '🥤 Ichimliklar']];
+const ICON = { 'Shaurma': '🌯', 'Burgerlar': '🍔', 'Xot-Dog': '🌭', 'Nonburger': '🥙', 'Pitsa': '🍕', 'Sendvich': '🥪', 'Qanotchalar': '🍗', Strips: '🍤', 'Kartoshka': '🍟', 'Souslar': '🥫', 'Ichimliklar': '🥤' };
+const UP = [['Souslar', '🥫 Souslar'], ['Kartoshka', '🍟 Kartoshka'], ['Ichimliklar', '🥤 Ichimliklar']];
 const UPCATS = UP.map((u) => u[0]);
 const SLIDES = [
   ['logo', 'Sizni ochlik qiynayaptimi?', 'Biz issiqqina taomlarni tezkor yetkazamiz.'],
@@ -52,20 +52,19 @@ function Pic({ p, cls }) {
   return <div className={cls + ' ph'}>{ICON[p.category] || '🍽'}</div>;
 }
 
-function Card({ p, onOpen, onAdd, fav, onFav, qty }) {
+function Card({ p, onOpen, onAdd, qty }) {
   const multi = p.variants?.length > 1;
   return (
     <div className="card" onClick={() => onOpen(p)}>
       <div className="imgw">
         <Pic p={p} cls="img" />
-        <button className={'heart' + (fav ? ' on' : '')} onClick={(e) => { e.stopPropagation(); onFav(p.id); }}>{fav ? '♥' : '♡'}</button>
         {p.oldPrice && <span className="sale">-{Math.round((1 - p.price / p.oldPrice) * 100)}%</span>}
         <button className="plus gold" onClick={(e) => { e.stopPropagation(); onAdd(e, p); }}>{qty > 0 ? qty : '+'}</button>
       </div>
       <div className="cb">
         <div className="price">
           {p.oldPrice && <s>{fmt(p.oldPrice)}</s>}
-          <b>{multi ? 'от ' : ''}{fmt(p.price)}</b>
+          <b>{multi ? fmt(p.price).replace(" so'm", " so'mdan") : fmt(p.price)}</b>
         </div>
         <div className="nm">{p.name}</div>
         <div className="sub">{multi ? p.variants.map((v) => v.l).join(' · ') : '1 dona'}</div>
@@ -104,11 +103,11 @@ export default function App() {
   const [up, setUp] = useState(false);
   const [upTab, setUpTab] = useState(0);
   const [cola, setCola] = useState(false);
+  const [name, setName] = useState(() => ls('ff_name', ''));
   const [phone, setPhone] = useState(() => ls('ff_phone', ''));
   const [loc, setLoc] = useState(() => ls('ff_loc', ''));
   const [busy, setBusy] = useState(false);
   const [cart, setCart] = useState(() => ls('cart', {}));
-  const [fav, setFav] = useState(() => ls('ff_fav', []));
   const [seen, setSeen] = useState(() => ls('ff_seen', []));
   const [stories, setStories] = useState([]);
   const [sview, setSview] = useState(null);
@@ -122,9 +121,9 @@ export default function App() {
     loadMe();
   }, []);
   useEffect(() => save('cart', cart), [cart]);
+  useEffect(() => save('ff_name', name), [name]);
   useEffect(() => save('ff_phone', phone), [phone]);
   useEffect(() => save('ff_loc', loc), [loc]);
-  useEffect(() => save('ff_fav', fav), [fav]);
   useEffect(() => save('ff_seen', seen), [seen]);
   useEffect(() => save('ff_sseen', sseen), [sseen]);
   useEffect(() => {
@@ -161,7 +160,6 @@ export default function App() {
     buzz();
     setCart((c) => { const k = id + '|' + idx; const n = (c[k] || 0) + d; const x = { ...c }; if (n <= 0) delete x[k]; else x[k] = n; return x; });
   };
-  const toggleFav = (id) => setFav((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));
   const openSheet = (p) => { setSheet(p); setSIdx(0); };
 
   const addFromCard = (e, p) => {
@@ -192,9 +190,13 @@ export default function App() {
     () => alert("Joylashuvga ruxsat berilmadi. Manzilni qo'lda yozing."));
 
   const confirmOrder = async () => {
+    const words = name.trim().split(/\s+/).filter((w) => w.length > 1);
+    if (words.length < 2) { alert('Ism va familiyangizni yozing (masalan: Alisher Karimov)'); return; }
+    if (phone.replace(/\D/g, '').length < 9) { alert("Telefon raqamingizni to'liq yozing (masalan: +998 90 123 45 67)"); return; }
+    if (loc.trim().length < 3) { alert('Manzilni yozing yoki joylashuvingizni yuboring'); return; }
     setBusy(true);
     try {
-      await api('/orders', { method: 'POST', body: { items: lines.map((l) => ({ id: l.p.id, idx: l.idx, qty: l.qty })), cola, phone, location: loc } });
+      await api('/orders', { method: 'POST', body: { items: lines.map((l) => ({ id: l.p.id, idx: l.idx, qty: l.qty })), cola, name: name.trim(), phone, location: loc } });
       tg?.HapticFeedback?.notificationOccurred('success');
       setCart({}); setCola(false);
       setTimeout(() => (tg ? tg.close() : go('orders')), 300);
@@ -226,10 +228,8 @@ export default function App() {
   }
 
   const ql = q.trim().toLowerCase();
-  const favItems = list.filter((p) => fav.includes(p.id));
   const last = me?.orders?.[0];
   const myOrders = me?.orders || [];
-  const spent = myOrders.filter((o) => o.status !== 'cancelled').reduce((s, o) => s + o.total, 0);
   const upItems = list.filter((p) => p.category === UP[upTab][0]);
 
   return (
@@ -271,20 +271,13 @@ export default function App() {
           </div>
         )}
 
-        {!ql && favItems.length > 0 && (
-          <section className="sec">
-            <h2><span>❤️</span> Sevimlilar</h2>
-            <div className="grid">{favItems.map((p) => <Card key={p.id} p={p} onOpen={openSheet} onAdd={addFromCard} fav onFav={toggleFav} qty={qtyOf(p.id)} />)}</div>
-          </section>
-        )}
-
         {cats.map((c, i) => {
           const items = list.filter((p) => p.category === c && (!ql || p.name.toLowerCase().includes(ql)));
           if (!items.length) return null;
           return (
             <section className="sec" id={'cat-' + i} key={c}>
               <h2><span>{ICON[c] || '🍽'}</span> {c}</h2>
-              <div className="grid">{items.map((p) => <Card key={p.id} p={p} onOpen={openSheet} onAdd={addFromCard} fav={fav.includes(p.id)} onFav={toggleFav} qty={qtyOf(p.id)} />)}</div>
+              <div className="grid">{items.map((p) => <Card key={p.id} p={p} onOpen={openSheet} onAdd={addFromCard} qty={qtyOf(p.id)} />)}</div>
             </section>
           );
         })}
@@ -302,7 +295,8 @@ export default function App() {
                 <div className="qty"><button onClick={() => add(l.p.id, l.idx, -1)}>−</button><b>{l.qty}</b><button onClick={() => add(l.p.id, l.idx, 1)}>+</button></div>
               </div>))}
             <div className="line sw-line"><span>Bunga qo'shimcha ravishda <b>Kola</b>ni atigi {fmt(COLA)}ga qo'shasizmi?</span><button className={'sw' + (cola ? ' on' : '')} onClick={() => setCola(!cola)} /></div>
-            <input className="input" type="tel" placeholder="📞 Telefon: +998 90 123 45 67" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <input className="input" autoComplete="name" placeholder="👤 Ism va familiya" value={name} onChange={(e) => setName(e.target.value)} />
+            <input className="input" type="tel" autoComplete="tel" placeholder="📞 Telefon: +998 90 123 45 67" value={phone} onChange={(e) => setPhone(e.target.value)} />
             <input className="input" placeholder="📍 Manzil" value={loc} onChange={(e) => setLoc(e.target.value)} />
             <button className="ghost wide" onClick={geo}>📍 Joylashuvimni yuborish</button>
             <div className="sum"><span>Jami:</span><b>{fmt(total)}</b></div>
@@ -335,23 +329,16 @@ export default function App() {
         <div className="page">
           <h1 className="title">Profil</h1>
           <div className="pcard">
-            <div className="av">{(me?.user?.name || 'M')[0]}</div>
-            <div><b>{me?.user?.name || 'Mehmon'}</b><div className="muted2">Mijoz</div></div>
+            <div className="av">{(name.trim() || 'M')[0].toUpperCase()}</div>
+            <div><b>{name.trim() || 'Mehmon'}</b><div className="muted2">Mijoz</div></div>
           </div>
-          <div className="stats">
-            <div><b>{myOrders.length}</b><span>buyurtma</span></div>
-            <div><b>{fav.length}</b><span>sevimli</span></div>
-            <div><b>{Math.round(spent / 1000)}k</b><span>xarajat</span></div>
-          </div>
+          <label className="lbl">Ism va familiya</label>
+          <input className="input" autoComplete="name" placeholder="Alisher Karimov" value={name} onChange={(e) => setName(e.target.value)} />
           <label className="lbl">Telefon</label>
           <input className="input" type="tel" placeholder="+998 90 123 45 67" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <label className="lbl">Manzil</label>
           <input className="input" placeholder="Yetkazib berish manzili" value={loc} onChange={(e) => setLoc(e.target.value)} />
           <button className="ghost wide" onClick={() => go('orders')}>📜 Mening buyurtmalarim</button>
-          {favItems.length > 0 && <>
-            <h2 className="h2">❤️ Sevimlilar</h2>
-            <div className="grid">{favItems.map((p) => <Card key={p.id} p={p} onOpen={openSheet} onAdd={addFromCard} fav onFav={toggleFav} qty={qtyOf(p.id)} />)}</div>
-          </>}
         </div>
       )}
 
